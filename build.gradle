@@ -1,0 +1,91 @@
+group 'nz.winterlight'
+
+repositories {
+    mavenCentral()
+    ivy {
+        url 'http://www-us.apache.org/dist/'
+        patternLayout {
+            artifact 'jmeter/source/[module]-[revision]_[classifier].[ext]'
+        }
+    }
+}
+
+configurations {
+    jmeterPlugins
+    jmeterSetup
+}
+
+ext {
+    jmeterVersion = '5.0'
+}
+
+configurations {
+    jmeterSetup
+    jmeterPlugins
+}
+
+dependencies {
+    jmeterSetup "org.jmeter:apache-jmeter:${jmeterVersion}:src@tgz"
+
+    jmeterPlugins(group: 'kg.apc', name: 'jmeter-plugins-casutg', version: '2.5') { // Custom Thread Groups
+        exclude group: 'org.apache.jmeter'
+        exclude group: 'org.apache.logging.log4j'
+    }
+    jmeterPlugins(group: 'kg.apc', name: 'jmeter-plugins-cmn-jmeter', version: '0.6') {
+        exclude group: 'org.apache.jmeter'
+        exclude group: 'org.apache.logging.log4j'
+    }
+    // 3 Basic Graphs: Average Response Time, Active Threads, Successful/Failed Transactions
+    jmeterPlugins(group: 'kg.apc', name: 'jmeter-plugins-graphs-basic', version: '2.0') {
+        exclude group: 'org.apache.jmeter'
+        exclude group: 'org.apache.logging.log4j'
+    }
+    // 5 Additional Graphs: Response Codes, Bytes Throughput, Connect Times, Latency, Hits/s
+    jmeterPlugins(group: 'kg.apc', name: 'jmeter-plugins-graphs-additional', version: '2.0') {
+        exclude group: 'org.apache.jmeter'
+        exclude group: 'org.apache.logging.log4j'
+    }
+    // Distribution/Percentile Graphs: Response Times Distribution, Response Times Percentiles
+    jmeterPlugins(group: 'kg.apc', name: 'jmeter-plugins-graphs-dist', version: '2.0') {
+        exclude group: 'org.apache.jmeter'
+        exclude group: 'org.apache.logging.log4j'
+    }
+    //Throughput Shaping Timer
+    jmeterPlugins(group: 'kg.apc', name: 'jmeter-plugins-tst', version: '2.5') {
+        exclude group: 'org.apache.jmeter'
+        exclude group: 'org.apache.logging.log4j'
+    }
+    // Command-Line Graph Plotting Tool
+    jmeterPlugins(group: 'kg.apc', name: 'jmeter-plugins-cmd', version: '2.2') {
+        exclude group: 'org.apache.jmeter'
+        exclude group: 'org.apache.logging.log4j'
+    }
+}
+
+task downloadJMeter(type: Copy) {
+    description = "Retrieve JMeter and place into the 'apache-jmeter' directory"
+    group = "JMeter Setup"
+    configurations.jmeterSetup.asFileTree.each {
+        from(tarTree(it))
+    }
+    into './apache-jmeter'
+
+    // Remove the subdirectory 'apache-jmeter-5.0' or similar from the path
+    // See https://github.com/gradle/gradle/issues/1108 for more details
+    eachFile { fcp ->
+        fcp.path = fcp.path.replaceFirst("^apache-jmeter.+?/", '/')
+    }
+    includeEmptyDirs false
+}
+
+task configureJMeterPlugins(type: Copy) {
+    description = "Retrieve JMeter Plugins and add them to Apache JMeter"
+    group = "JMeter Setup"
+    dependsOn downloadJMeter
+    from configurations.jmeterPlugins
+    into './apache-jmeter/lib/ext'
+}
+
+wrapper {
+    gradleVersion = '5.0'
+}
